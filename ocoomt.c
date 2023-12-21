@@ -2,31 +2,31 @@
  * malloc() will not report that it failed to allocate memory except under very specific conditions
  * because of the various Over Commit modes that the Linux kernel uses. This is described in the
  * '/proc/sys/vm/overcommit_memory' section of manual page proc(5).
- * 
+ *
  * However, I found that the conditions in which the kernel will not Over Commit are not as described
  * in the manual page, but are instead as follows:
- * 
+ *
  * heuristic overcommit: The kernel is supposed to use a 'heuristic' algorithm to refuse an allocation
  * that is too large. In my testing, this only occurs when the allocation amount requested is larger
  * than or equal to the total amount of physical memory, and total amount of swap if enabled.
- * 
+ *
  * always overcommit, never check: Self-explanatory. Kernel will fulfill any allocation request even
  * if it is too large.
- * 
+ *
  * never overcommit, always check: proc(5) describes the kernel limiting allocation requests to the
  * amount defined by 'CommitLimit' and how it is calculated. However, in my testing, the kernel
  * instead refuses requests that are approximately 'CommitLimit - CommittedAS' in size. CommitLimit
  * and CommittedAS are both further defined in proc(5).
- * 
+ *
  * The program firsts allocates a buffer of pointers, the maximum size the system will allow by using
  * a loop to attempt allocations until malloc() succeeds, which will depend on the Over Commit mode as
  * described above. It will then go into a loop that allocates memory to each pointer in that buffer
- * incrementally until an Out of Memory condition is created, and the kernel kills it in 'heuristic' 
+ * incrementally until an Out of Memory condition is created, and the kernel kills it in 'heuristic'
  * or 'always' mode, or until malloc() finally fails in 'never' mode. It will display the amount of
  * physical and virtual memory the process is using, as well as the available memory, buffers, cached,
  * swap, and caches in swap as it does so, revealing what memory conditions are created under memory
  * pressure, and what levels of Over Commit will be tolerated before the program is OOM-killed.
- * 
+ *
  * To ensure that this process is killed by the OOM manager, and not other processes, it can be started
  * with the 'choom' utility to adjust its oom score.*/
 
@@ -127,16 +127,16 @@ int parse_opts(int argc, char *argv[], struct opts *opts_st)
                 errflg++;
                 break;
             }
-            
-            if(strcmp(optarg,"physical") == 0) {
+
+            if (strcmp(optarg, "physical") == 0) {
                 opts_st->total_is_physical = true;
-            } else if(strcmp(optarg,"swap_and_physical") == 0) {
+            } else if (strcmp(optarg, "swap_and_physical") == 0) {
                 opts_st->total_is_swap_and_physical = true;
             } else {
                 fprintf(stderr, "Invalid option: %s\n", optarg);
                 errflg = 1;
             }
-            
+
             break;
         case 's':
             if (optarg[0] == '-') {
@@ -144,16 +144,16 @@ int parse_opts(int argc, char *argv[], struct opts *opts_st)
                 errflg++;
                 break;
             }
-            
-            if(strcmp(optarg,"total") == 0) {
+
+            if (strcmp(optarg, "total") == 0) {
                 opts_st->use_total_swap = true;
-            } else if(strcmp(optarg,"free") == 0) {
+            } else if (strcmp(optarg, "free") == 0) {
                 opts_st->use_free_swap = true;
             } else {
                 fprintf(stderr, "Invalid option: %s\n", optarg);
                 errflg = 1;
             }
-            
+
             break;
         case ':':
             fprintf(stderr, "Option -%c requires an argument\n", opt);
@@ -228,9 +228,9 @@ int main(int argc, char *argv[])
     if (fgets(overcommit_string, 2, overcommit_memory) == NULL) {
         PRINT_SYS_ERROR(errno);
     }
-    
+
     int overcommit_mode;
-    if(sscanf(overcommit_string,"%i",&overcommit_mode) != 1) {
+    if (sscanf(overcommit_string, "%i", &overcommit_mode) != 1) {
         PRINT_SYS_ERROR(errno);
         exit(EXIT_FAILURE);
     }
@@ -244,20 +244,20 @@ int main(int argc, char *argv[])
     size_t swap_total = get_meminfo_attribute("/proc/meminfo", "SwapTotal: %lu kB", byte);
     size_t commit_limit = get_meminfo_attribute("/proc/meminfo", "CommitLimit: %lu kB", byte);
     size_t committed_as = get_meminfo_attribute("/proc/meminfo", "Committed_AS: %lu Kb", byte);
-    
+
     size_t swap_type;
-    if(opts_st.use_free_swap) {
+    if (opts_st.use_free_swap) {
         swap_type = swap_free;
-    } else if(opts_st.use_total_swap) {
+    } else if (opts_st.use_total_swap) {
         swap_type = swap_total;
     }
-    
+
     size_t allocation_amount = 0;
 
     if (overcommit_mode == heuristic || overcommit_mode == always) {
         if (overcommit_mode == heuristic) {
             if (opts_st.overcommit_heuristic) {
-                if(opts_st.total_is_physical) {
+                if (opts_st.total_is_physical) {
                     allocation_amount = mem_total;
                 } else if (opts_st.total_is_swap_and_physical) {
                     allocation_amount = mem_total + swap_type;
@@ -269,7 +269,7 @@ int main(int argc, char *argv[])
                 allocation_amount = mem_available + swap_type;
             }
         } else if (overcommit_mode == always) {
-            if(opts_st.total_is_physical) {
+            if (opts_st.total_is_physical) {
                 allocation_amount = mem_available;
             } else if (opts_st.total_is_swap_and_physical) {
                 allocation_amount = mem_available + swap_type;
@@ -292,11 +292,11 @@ int main(int argc, char *argv[])
     printf(buffers > MEGABYTE ? "Buffers: %zu mB\n" : "Buffers: %zu bytes\n", buffers > MEGABYTE ? b_to_mb(buffers) : buffers);
     printf(cached > MEGABYTE ? "Cached: %zu mB\n" : "Cached: %zu bytes\n", cached > MEGABYTE ? b_to_mb(cached) : cached);
     printf(swap_cached > MEGABYTE ? "SwapCached: %zu mB\n" : "SwapCached: %zu bytes\n", swap_cached > MEGABYTE ? b_to_mb(swap_cached) : swap_cached);
-    printf(swap_total > MEGABYTE ? "SwapTotal: %zu mB\n" : "SwapTotal: %zu bytes\n", swap_total > MEGABYTE ? b_to_mb(swap_total): swap_total);
+    printf(swap_total > MEGABYTE ? "SwapTotal: %zu mB\n" : "SwapTotal: %zu bytes\n", swap_total > MEGABYTE ? b_to_mb(swap_total) : swap_total);
     printf(swap_free > MEGABYTE ? "SwapFree: %zu mB\n" : "SwapFree: %zu bytes\n", swap_free > MEGABYTE ? b_to_mb(swap_free) : swap_free);
     printf(commit_limit > MEGABYTE ? "CommitLimit: %zu mB\n" : "CommitLimmit: %zu bytes\n", commit_limit > MEGABYTE ? b_to_mb(commit_limit) : commit_limit);
     printf(committed_as > MEGABYTE ? "Committed_AS: %zu mB\n" : "Committed_AS: %zu bytes\n", committed_as > MEGABYTE ? b_to_mb(committed_as) : committed_as);
-    
+
     for (size_t i = allocation_amount;; i -= MEGABYTE) {
         printf("Attepting to Allocate: %zu mB\n", b_to_mb(i));
         buffer_array = malloc(sizeof(uint8_t) * i);
@@ -308,7 +308,7 @@ int main(int argc, char *argv[])
             continue;
         } else {
             printf("Successfully Allocated %zu mB\n", b_to_mb(i));
-            if(opts_st.memset_pointers) {
+            if (opts_st.memset_pointers) {
                 printf("Attempting to memset() allocated memory\n");
                 if (memset(buffer_array, 0, sizeof(uint8_t) * i) != NULL) {
                     printf("\nmemset() executed succeeded\n\n");
@@ -349,10 +349,10 @@ int main(int argc, char *argv[])
         size_t proc_virt_mem_used = get_meminfo_attribute("/proc/self/status", "VmSize: %lu kB", byte);
 
         printf(mem_available > MEGABYTE ? "MemAvailable: %zu mB...\n" : "MemAvailable: %zu bytes...\n", mem_available > MEGABYTE ? b_to_mb(mem_available) : mem_available);
-        printf(buffers > MEGABYTE ? "Buffers: %zu mB\n": "Buffers: %zu bytes\n", buffers > MEGABYTE ? b_to_mb(buffers) : buffers);
+        printf(buffers > MEGABYTE ? "Buffers: %zu mB\n" : "Buffers: %zu bytes\n", buffers > MEGABYTE ? b_to_mb(buffers) : buffers);
         printf(cached > MEGABYTE ? "Cached: %zu mB\n" : "Cached: %zu bytes\n", cached > MEGABYTE ? b_to_mb(cached) : cached);
         if (swap_free) {
-            printf(swap_cached > MEGABYTE ? "SwapCached: %zu mB\n" : "SwapCached: %zu bytes\n", swap_cached > MEGABYTE ?  b_to_mb(buffers) : swap_cached);
+            printf(swap_cached > MEGABYTE ? "SwapCached: %zu mB\n" : "SwapCached: %zu bytes\n", swap_cached > MEGABYTE ? b_to_mb(buffers) : swap_cached);
             printf(swap_free > MEGABYTE ? "SwapFree: %zu mB...\n" : "SwapFree: %zu bytes...\n", swap_free > MEGABYTE ? b_to_mb(swap_free) : swap_free);
         }
         printf(commit_limit > MEGABYTE ? "CommitLimit: %zu mB\n" : "CommitLimit: %zu bytes\n", commit_limit > MEGABYTE ? b_to_mb(commit_limit) : commit_limit);
